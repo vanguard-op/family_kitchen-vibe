@@ -19,6 +19,31 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Card(
+          margin: const EdgeInsets.all(12),
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle, size: 48, color: Colors.green[300]),
+                const SizedBox(height: 12),
+                Text(
+                  'No items',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Card(
@@ -38,8 +63,7 @@ class DashboardCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  if (icon != null)
-                    Icon(icon, size: 24, color: Colors.deepOrange),
+                  if (icon != null) Icon(icon, size: 24, color: Colors.deepOrange),
                 ],
               ),
               if (subtitle != null)
