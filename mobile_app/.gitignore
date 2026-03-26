@@ -1,0 +1,17 @@
+version-control-system: git
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+build/
+generated_plugin_registrant.dart
+.fvmrc
+.idea/
+*.iml
+.gradle/
+.android/
+.xcode/
+.ios/
+Flutter Release
+Flutter Debug
