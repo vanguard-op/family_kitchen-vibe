@@ -1,0 +1,4 @@
+gcp_project_id = "family-kitchen-dev"
+gcp_region     = "us-central1"
+environment    = "dev"
+app_name       = "family-kitchen"

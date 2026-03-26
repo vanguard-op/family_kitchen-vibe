@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "users": {
+      "{userId}": {
+        ".read": "request.auth.uid == userId",
+        ".write": "request.auth.uid == userId"
+      }
+    },
+    "kingdoms": {
+      "{kingdomId}": {
+        ".read": "root.child('members').child(request.auth.uid).child('kingdom_id').val() == kingdomId",
+        ".write": "root.child('members').child(request.auth.uid).child('kingdom_id').val() == kingdomId && (root.child('members').child(request.auth.uid).child('role').val() == 'King' || root.child('members').child(request.auth.uid).child('role').val() == 'Queen')",
+        "members": {
+          ".read": "root.child('members').child(request.auth.uid).child('kingdom_id').val() == kingdomId",
+          ".write": "root.child('members').child(request.auth.uid).child('kingdom_id').val() == kingdomId && (root.child('members').child(request.auth.uid).child('role').val() == 'King' || root.child('members').child(request.auth.uid).child('role').val() == 'Queen')"
+        },
+        "inventory": {
+          ".read": "root.child('members').child(request.auth.uid).child('kingdom_id').val() == kingdomId",
+          ".write": "root.child('members').child(request.auth.uid).child('kingdom_id').val() == kingdomId"
+        }
+      }
+    },
+    "members": {
+      "{memberId}": {
+        "allergies": {
+          ".read": "root.child('members').child(request.auth.uid).child('kingdom_id').val() == root.child('members').child(memberId).child('kingdom_id').val()",
+          ".write": "request.auth.uid == memberId"
+        }
+      }
+    }
+  }
+}
