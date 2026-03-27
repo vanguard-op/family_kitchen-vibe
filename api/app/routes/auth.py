@@ -1,12 +1,12 @@
 """Authentication endpoints"""
-from fastapi import APIRouter, HTTPException, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, status
 
 from app.schemas.auth import (
     SignupRequest,
     LoginRequest,
     RefreshTokenRequest,
     TokenResponse,
+    SignupResponse,
     ErrorResponse,
 )
 from app.db.firestore import (
@@ -23,10 +23,235 @@ from app.utils.auth import (
     create_token_pair,
     decode_token,
 )
-from app.config import settings
-from datetime import datetime
 
 router = APIRouter()
+
+
+@router.post(
+    "/signup",
+    response_model=SignupResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={400: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
+)
+async def signup(request: SignupRequest):
+    """Sign up a new user account."""
+    try:
+        existing_user = get_user_by_email(request.email)
+        if existing_user:
+            log_auth_attempt(
+                event_type="signup_failed",
+                email=request.email,
+                reason="email_already_exists",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
+
+        password_hash = hash_password(request.password)
+        user_id = create_user(email=request.email, password_hash=password_hash)
+
+        access_token, refresh_token = create_token_pair(user_id=user_id, role="User")
+        create_refresh_token_record(user_id=user_id, refresh_token=refresh_token)
+
+        log_auth_attempt(
+            event_type="signup_success",
+            email=request.email,
+            user_id=user_id,
+            success=True,
+        )
+
+        return SignupResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user_id=user_id,
+        )
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        log_auth_attempt(
+            event_type="signup_failed",
+            email=request.email,
+            reason=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
+    except Exception as e:
+        log_auth_attempt(
+            event_type="signup_error",
+            email=request.email,
+            reason=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Signup failed",
+        )
+
+
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
+    responses={401: {"model": ErrorResponse}},
+)
+async def login(request: LoginRequest):
+    """Authenticate user and return access/refresh tokens."""
+    try:
+        user = get_user_by_email(request.email)
+        if not user:
+            log_auth_attempt(
+                event_type="login_failed",
+                email=request.email,
+                reason="user_not_found",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+
+        if not verify_password(request.password, user["password_hash"]):
+            log_auth_attempt(
+                event_type="login_failed",
+                email=request.email,
+                reason="invalid_password",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+
+        if not user.get("is_active", True):
+            log_auth_attempt(
+                event_type="login_failed",
+                email=request.email,
+                reason="user_deactivated",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account has been deactivated",
+            )
+
+        user_id = user["user_id"]
+        kingdom_id = user.get("kingdom_id", "default-kingdom")
+        role = user.get("role", "User")
+
+        access_token, refresh_token = create_token_pair(
+            user_id=user_id,
+            kingdom_id=kingdom_id,
+            role=role,
+        )
+        create_refresh_token_record(user_id=user_id, refresh_token=refresh_token)
+
+        log_auth_attempt(
+            event_type="login_success",
+            email=request.email,
+            user_id=user_id,
+            success=True,
+        )
+
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_auth_attempt(
+            event_type="login_error",
+            email=request.email,
+            reason=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Login failed",
+        )
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
+    responses={401: {"model": ErrorResponse}},
+)
+async def refresh(request: RefreshTokenRequest):
+    """Refresh access token using a valid refresh token."""
+    try:
+        claims = decode_token(request.refresh_token)
+        user_id = claims.get("user_id")  # Fixed: was claims.get("sub")
+        token_type = claims.get("type")
+
+        if token_type != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+            )
+
+        token_record = get_refresh_token_record(user_id)
+        if not token_record:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token invalid or revoked",
+            )
+
+        kingdom_id = claims.get("kingdom_id", "default-kingdom")
+        role = claims.get("role", "User")
+
+        access_token, new_refresh_token = create_token_pair(
+            user_id=user_id,
+            kingdom_id=kingdom_id,
+            role=role,
+        )
+
+        revoke_refresh_token(user_id)
+        create_refresh_token_record(user_id=user_id, refresh_token=new_refresh_token)
+
+        log_auth_attempt(
+            event_type="token_refresh_success",
+            user_id=user_id,
+            success=True,
+        )
+
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=new_refresh_token,
+            token_type="bearer",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_auth_attempt(
+            event_type="token_refresh_failed",
+            reason=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token refresh failed",
+        )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(request: RefreshTokenRequest):
+    """Logout user by revoking refresh token."""
+    try:
+        claims = decode_token(request.refresh_token)
+        user_id = claims.get("user_id")
+        revoke_refresh_token(user_id)
+        log_auth_attempt(
+            event_type="logout_success",
+            user_id=user_id,
+            success=True,
+        )
+    except Exception:
+        pass  # Logout always succeeds silently
+    return None
+
 
 
 @router.post(

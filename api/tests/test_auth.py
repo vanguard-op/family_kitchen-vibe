@@ -1,7 +1,7 @@
 """Authentication tests"""
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, MagicMock
 
 from app.main import app
 from app.utils.auth import hash_password, decode_token
@@ -29,10 +29,10 @@ class TestHealthEndpoint:
 class TestSignup:
     """Test signup endpoint"""
 
-    @patch("app.routes.auth.get_user_by_email", new_callable=AsyncMock)
-    @patch("app.routes.auth.create_user", new_callable=AsyncMock)
-    @patch("app.routes.auth.create_refresh_token_record", new_callable=AsyncMock)
-    @patch("app.routes.auth.log_auth_attempt", new_callable=AsyncMock)
+    @patch("app.routes.auth.get_user_by_email")
+    @patch("app.routes.auth.create_user")
+    @patch("app.routes.auth.create_refresh_token_record")
+    @patch("app.routes.auth.log_auth_attempt")
     def test_signup_success(self, mock_log, mock_create_token, mock_create_user, mock_get_user):
         """Test successful signup"""
         mock_get_user.return_value = None
@@ -53,8 +53,8 @@ class TestSignup:
         assert data["token_type"] == "bearer"
         assert data["user_id"] == "user-123"
 
-    @patch("app.routes.auth.get_user_by_email", new_callable=AsyncMock)
-    @patch("app.routes.auth.log_auth_attempt", new_callable=AsyncMock)
+    @patch("app.routes.auth.get_user_by_email")
+    @patch("app.routes.auth.log_auth_attempt")
     def test_signup_email_exists(self, mock_log, mock_get_user):
         """Test signup with existing email"""
         mock_get_user.return_value = {"user_id": "user-456", "email": "test@example.com"}
@@ -98,9 +98,9 @@ class TestSignup:
 class TestLogin:
     """Test login endpoint"""
 
-    @patch("app.routes.auth.get_user_by_email", new_callable=AsyncMock)
-    @patch("app.routes.auth.create_refresh_token_record", new_callable=AsyncMock)
-    @patch("app.routes.auth.log_auth_attempt", new_callable=AsyncMock)
+    @patch("app.routes.auth.get_user_by_email")
+    @patch("app.routes.auth.create_refresh_token_record")
+    @patch("app.routes.auth.log_auth_attempt")
     def test_login_success(self, mock_log, mock_create_token, mock_get_user):
         """Test successful login"""
         password = "TestPass123!"
@@ -127,8 +127,8 @@ class TestLogin:
         assert "refresh_token" in data
         assert data["token_type"] == "bearer"
 
-    @patch("app.routes.auth.get_user_by_email", new_callable=AsyncMock)
-    @patch("app.routes.auth.log_auth_attempt", new_callable=AsyncMock)
+    @patch("app.routes.auth.get_user_by_email")
+    @patch("app.routes.auth.log_auth_attempt")
     def test_login_user_not_found(self, mock_log, mock_get_user):
         """Test login with non-existent user"""
         mock_get_user.return_value = None
@@ -144,8 +144,8 @@ class TestLogin:
         assert response.status_code == 401
         assert "Invalid email or password" in response.json()["detail"]
 
-    @patch("app.routes.auth.get_user_by_email", new_callable=AsyncMock)
-    @patch("app.routes.auth.log_auth_attempt", new_callable=AsyncMock)
+    @patch("app.routes.auth.get_user_by_email")
+    @patch("app.routes.auth.log_auth_attempt")
     def test_login_wrong_password(self, mock_log, mock_get_user):
         """Test login with wrong password"""
         mock_get_user.return_value = {
@@ -170,17 +170,17 @@ class TestRefresh:
     """Test token refresh endpoint"""
 
     @patch("app.routes.auth.decode_token")
-    @patch("app.routes.auth.get_refresh_token_record", new_callable=AsyncMock)
-    @patch("app.routes.auth.revoke_refresh_token", new_callable=AsyncMock)
-    @patch("app.routes.auth.create_refresh_token_record", new_callable=AsyncMock)
-    @patch("app.routes.auth.log_auth_attempt", new_callable=AsyncMock)
+    @patch("app.routes.auth.get_refresh_token_record")
+    @patch("app.routes.auth.revoke_refresh_token")
+    @patch("app.routes.auth.create_refresh_token_record")
+    @patch("app.routes.auth.log_auth_attempt")
     def test_refresh_success(
         self, mock_log, mock_create_token, mock_revoke, mock_get_token, mock_decode
     ):
         """Test successful token refresh"""
         mock_decode.return_value = {
-            "sub": "user-123",
-            "email": "test@example.com",
+            "user_id": "user-123",
+            "kingdom_id": "default-kingdom",
             "role": "User",
             "type": "refresh",
         }
@@ -220,7 +220,6 @@ class TestTokenDecoding:
 
         access_token, refresh_token = create_token_pair(
             user_id="user-123",
-            email="test@example.com",
             role="User",
         )
 

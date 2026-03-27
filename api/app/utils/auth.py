@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Tuple
 import uuid
 
-import jwt
+from jose import jwt, JWTError
+from jose.exceptions import ExpiredSignatureError
 from passlib.context import CryptContext
 
 from app.config import get_settings
@@ -59,8 +60,8 @@ def create_access_token(
     settings = get_settings()
     
     if expires_delta is None:
-        expires_delta = settings.ACCESS_TOKEN_EXPIRY
-    
+        expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
     # Calculate expiration time in UTC
     now = datetime.now(timezone.utc)
     expire = now + expires_delta
@@ -101,8 +102,8 @@ def create_refresh_token(
     settings = get_settings()
     
     if expires_delta is None:
-        expires_delta = settings.REFRESH_TOKEN_EXPIRY
-    
+        expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
     # Calculate expiration time in UTC
     now = datetime.now(timezone.utc)
     expire = now + expires_delta
@@ -170,10 +171,10 @@ def decode_token(token: str) -> Dict:
             algorithms=[settings.JWT_ALGORITHM],
         )
         return payload
-    except jwt.ExpiredSignatureError as e:
-        raise jwt.InvalidTokenError("Token has expired") from e
-    except jwt.InvalidTokenError as e:
-        raise jwt.InvalidTokenError(f"Invalid token: {str(e)}") from e
+    except ExpiredSignatureError as e:
+        raise JWTError("Token has expired") from e
+    except JWTError as e:
+        raise JWTError(f"Invalid token: {str(e)}") from e
 
 
 def extract_user_from_token(token: str) -> Dict:
