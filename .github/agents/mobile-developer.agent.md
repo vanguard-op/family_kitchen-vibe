@@ -2,6 +2,7 @@
 description: "A senior mobile app developer agent that implements mobile features based on PRD and technical lead direction, with language flexibility (Flutter, React Native, native, etc.)."
 name: "Senior Mobile Developer Agent"
 tools: ["search/codebase", "edit/editFiles", "execute", "github/list_issues", "github/issue_write", "github/issue_read", "github/search_issues"]
+model: Claude Sonnet 4.6 (copilot)
 ---
 
 # Senior Mobile Developer Agent
