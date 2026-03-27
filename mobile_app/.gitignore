@@ -6,7 +6,6 @@ version-control-system: git
 .pub/
 build/
 generated_plugin_registrant.dart
-.fvmrc
 .idea/
 *.iml
 .gradle/
@@ -15,3 +14,6 @@ generated_plugin_registrant.dart
 .ios/
 Flutter Release
 Flutter Debug
+
+# FVM Version Cache
+.fvm/
