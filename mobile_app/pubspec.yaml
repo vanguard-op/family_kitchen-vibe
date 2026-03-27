@@ -31,6 +31,11 @@ dependencies:
   firebase_messaging: ^15.2.5
   google_fonts: ^6.1.0
   fl_chart: ^0.69.0
+  flutter_bloc: ^9.1.1
+  flutter_animate: ^4.5.2
+  font_awesome_flutter: ^11.0.0
+  go_router: ^17.1.0
+  gap: ^3.0.1
 
 dev_dependencies:
   flutter_test:
@@ -41,16 +46,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # assets:
-  #   - assets/images/
-  #   - assets/icons/
-  # fonts:
-  #   - family: Roboto
-  #     fonts:
-  #       - asset: assets/fonts/Roboto-Regular.ttf
-  #       - asset: assets/fonts/Roboto-Bold.ttf
-  #         weight: 700
-  #       - asset: assets/fonts/Roboto-Light.ttf
-  #         weight: 300
 msix_config:
   windows_package_name: "FamilyKitchen"
