@@ -60,7 +60,7 @@ lib/
   app.dart                  # MaterialApp.router entry
   router/
     app_router.dart         # GoRouter definition (all routes here)
-                            # No routes.dart — route names live on each screen
+    app_routes.dart         # AppRoutes abstract class — all route names and param keys
   theme/
     app_theme.dart          # ThemeData light + dark
     app_colors.dart         # Color palette tokens
@@ -216,40 +216,38 @@ abstract final class AppTheme {
 
 ## Navigation (GoRouter)
 
-### Route name on each screen
+### `router/app_routes.dart`
 
-Every screen declares its own `route` name as a `static const String`. Path and query parameter keys are also declared on the screen, prefixed with `path` or `query`.
+All route name constants and their path/query parameter keys live in a single `AppRoutes` abstract class. Name constants after the screen (camelCase). Prefix parameter keys with the screen name + `path` or `query`.
 
 ```dart
-// features/auth/screens/login_screen.dart
-class LoginScreen extends StatelessWidget {
-  static const String route = 'login';   // Used as GoRoute name
+abstract final class AppRoutes {
+  // Route names
+  static const String splash       = 'splash';
+  static const String login        = 'login';
+  static const String signup       = 'signup';
+  static const String home         = 'home';
+  // Add project-specific names below:
+  // static const String featureA     = 'feature-a';
+  // static const String detail       = 'detail';
 
-  const LoginScreen({super.key});
-  // ...
-}
+  // Path parameters (prefix: <routeName>Path<Param>)
+  // static const String detailPathId  = 'id';        // path: /detail/:id
 
-// features/item/screens/detail_screen.dart
-class DetailScreen extends StatelessWidget {
-  static const String route    = 'detail';
-  static const String pathId   = 'id';            // path parameter: /detail/:id
-  static const String queryTab = 'tab';           // query parameter: ?tab=info
-
-  final String id;
-  final String? tab;
-  const DetailScreen({super.key, required this.id, this.tab});
-  // ...
+  // Query parameters (prefix: <routeName>Query<Param>)
+  // static const String featureAQueryFilter = 'filter'; // ?filter=active
 }
 ```
 
 ### `router/app_router.dart`
 
-Every `GoRoute` sets both `name` (from the screen's `route` constant) and `path` (URL string). Paths are an implementation detail — no other file references them as strings.
+Every `GoRoute` sets `name` from `AppRoutes` and `path` as the URL string. Paths are an implementation detail — no other file references them as strings.
 
 ```dart
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../features/auth/bloc/auth_bloc.dart';
+import 'app_routes.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -266,34 +264,35 @@ final appRouter = GoRouter(
     return null;
   },
   routes: [
-    GoRoute(name: SplashScreen.route, path: '/',       builder: (_, __) => const SplashScreen()),
-    GoRoute(name: LoginScreen.route,  path: '/login',  builder: (_, __) => const LoginScreen()),
-    GoRoute(name: SignupScreen.route, path: '/signup', builder: (_, __) => const SignupScreen()),
+    GoRoute(name: AppRoutes.splash, path: '/',       builder: (_, __) => const SplashScreen()),
+    GoRoute(name: AppRoutes.login,  path: '/login',  builder: (_, __) => const LoginScreen()),
+    GoRoute(name: AppRoutes.signup, path: '/signup', builder: (_, __) => const SignupScreen()),
+    // Wrap authenticated routes in a ShellRoute for persistent navigation chrome
     ShellRoute(
       builder: (context, state, child) => AppShell(child: child),
       routes: [
-        GoRoute(name: HomeScreen.route, path: '/home', builder: (_, __) => const HomeScreen()),
+        GoRoute(name: AppRoutes.home, path: '/home', builder: (_, __) => const HomeScreen()),
         // Add project-specific routes here.
         // GoRoute(
-        //   name: FeatureAScreen.route,
+        //   name: AppRoutes.featureA,
         //   path: '/home/feature-a',
         //   builder: (_, __) => const FeatureAScreen(),
         // ),
-        // Route with path + query parameters:
+        // Route with path parameter:
         // GoRoute(
-        //   name: DetailScreen.route,
-        //   path: '/home/feature-a/:${DetailScreen.pathId}',
+        //   name: AppRoutes.detail,
+        //   path: '/home/feature-a/:${AppRoutes.detailPathId}',
         //   builder: (_, state) => DetailScreen(
-        //     id:  state.pathParameters[DetailScreen.pathId]!,
-        //     tab: state.uri.queryParameters[DetailScreen.queryTab],
+        //     id:  state.pathParameters[AppRoutes.detailPathId]!,
+        //     tab: state.uri.queryParameters[AppRoutes.detailQueryTab],
         //   ),
         // ),
         // Use CustomTransitionPage for modal-style pushes:
         // GoRoute(
-        //   name: DetailScreen.route,
-        //   path: '/home/feature-a/:${DetailScreen.pathId}',
+        //   name: AppRoutes.detail,
+        //   path: '/home/feature-a/:${AppRoutes.detailPathId}',
         //   pageBuilder: (_, state) => CustomTransitionPage(
-        //     child: DetailScreen(id: state.pathParameters[DetailScreen.pathId]!),
+        //     child: DetailScreen(id: state.pathParameters[AppRoutes.detailPathId]!),
         //     transitionsBuilder: (_, anim, __, child) =>
         //         SlideTransition(
         //           position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(anim),
@@ -309,32 +308,34 @@ final appRouter = GoRouter(
 
 ### Navigation usage
 
-Always navigate by **name** using the screen's `route` constant. Use the screen's `pathXxx` / `queryXxx` constants as parameter keys — never hardcode strings.
+Always navigate by **name** using `AppRoutes` constants. Use `AppRoutes` param key constants — never hardcode strings.
 
 ```dart
+import '../../../router/app_routes.dart';
+
 // Replace current stack
-context.goNamed(HomeScreen.route);
+context.goNamed(AppRoutes.home);
 
 // Push onto stack (back button returns)
-context.pushNamed(SignupScreen.route);
+context.pushNamed(AppRoutes.signup);
 
 // Pop
 context.pop();
 
 // With path parameters
 context.goNamed(
-  DetailScreen.route,
-  pathParameters: {DetailScreen.pathId: item.id},
+  AppRoutes.detail,
+  pathParameters: {AppRoutes.detailPathId: item.id},
 );
 
 // With query parameters
 context.goNamed(
-  FeatureAScreen.route,
-  queryParameters: {FeatureAScreen.queryFilter: 'active'},
+  AppRoutes.featureA,
+  queryParameters: {AppRoutes.featureAQueryFilter: 'active'},
 );
 
 // With extra (non-serializable in-memory data)
-context.pushNamed(DetailScreen.route, extra: item);
+context.pushNamed(AppRoutes.detail, extra: item);
 ```
 
 ---
@@ -553,10 +554,10 @@ class MyApp extends StatelessWidget {
 | Bad | Good |
 |-----|------|
 | `fontFamily: 'Roboto'` in ThemeData | `GoogleFonts.poppins(...)` in `AppTextStyles` |
-| `Navigator.push(...)` | `context.pushNamed(ScreenClass.route)` |
-| `context.go('/some/path')` hardcoded path | `context.goNamed(ScreenClass.route)` |
-| `pathParameters: {'id': x}` raw string key | `pathParameters: {DetailScreen.pathId: x}` |
-| Central `Routes` class with all names | `static const String route` on each screen |
+| `Navigator.push(...)` | `context.pushNamed(AppRoutes.xyz)` |
+| `context.go('/some/path')` hardcoded path | `context.goNamed(AppRoutes.xyz)` |
+| `pathParameters: {'id': x}` raw string key | `pathParameters: {AppRoutes.detailPathId: x}` |
+| `static const route` on each screen class | `AppRoutes.xyz` in `router/app_routes.dart` |
 | `SizedBox(height: 16)` for spacing | `Gap(16)` |
 | `ChangeNotifierProvider` + Provider | `BlocProvider` + `flutter_bloc` |
 | Hardcoded colors (`Colors.orange`) | `AppColors.primary` |
