@@ -21,7 +21,7 @@ class InventoryProvider extends ChangeNotifier {
       // TODO: Call API client to get dashboard
       // final response = await _apiClient.getDashboard(kingdomId);
       // _dashboard = DashboardModel.fromJson(response);
-      
+
       // Mock data for now
       await Future.delayed(const Duration(seconds: 1));
 
