@@ -90,7 +90,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 DashboardCard(
                   title: 'Expiring Soon',
-                  subtitle: '${provider.dashboard?.expiringSoon.length ?? 0} items',
+                  subtitle:
+                      '${provider.dashboard?.expiringSoon.length ?? 0} items',
                   icon: Icons.calendar_today,
                   items: (provider.dashboard?.expiringSoon ?? [])
                       .map((item) => {
