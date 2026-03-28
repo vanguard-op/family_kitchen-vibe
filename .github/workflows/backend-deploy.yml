@@ -3,8 +3,7 @@ name: Deploy Backend to Cloud Run
 on:
   push:
     branches: [main]
-    paths:
-      - 'api/**'
+  workflow_dispatch: 
 
 jobs:
   deploy:
@@ -12,32 +11,73 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v4
+        id: changes
+        with:
+          filters: |
+            api:
+              - 'api/**'
+            infra:
+              - 'infra/**'
       
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v0
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          # service_account: "${{ secrets.GCP_SA_NAME }}@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.3
       
       - name: Configure Docker
+        if: steps.changes.outputs.api == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           gcloud auth configure-docker gcr.io
       
       - name: Build Docker image
+        if: steps.changes.outputs.api == 'true' || github.event_name == 'workflow_dispatch'
         working-directory: ./api
         run: |
           docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/family-kitchen-api:${{ github.sha }} .
           docker tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/family-kitchen-api:${{ github.sha }} gcr.io/${{ secrets.GCP_PROJECT_ID }}/family-kitchen-api:latest
       
       - name: Push Docker image
+        if: steps.changes.outputs.api == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/family-kitchen-api:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/family-kitchen-api:latest
       
+      - name: Terraform Apply
+        if: steps.changes.outputs.infra == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: ./infra
+        run: |
+          export TF_VAR_gcp_project_id="vanguard-op"
+          export TF_VAR_gcp_region="africa-south1"
+          export TF_VAR_firestore_region="africa-south1"
+          export TF_VAR_environment="dev"
+          export TF_VAR_app_name="family-kitchen"
+          export TF_VAR_cloud_run_image="gcr.io/vanguard-op/family-kitchen-api:latest"
+          export TF_VAR_cloud_run_min_instances=0
+          export TF_VAR_cloud_run_max_instances=3
+          export TF_VAR_cloud_run_cpu="1"
+          export TF_VAR_cloud_run_memory="512Mi"
+          export TF_VAR_log_retention_days=30
+          export TF_VAR_enable_firestore_backup=false
+          export TF_VAR_enable_cloud_armor=false
+          export TF_VAR_create_state_bucket=false
+          
+          terraform init -backend-config="dev.hcl"
+          terraform apply -auto-approve
+      
       - name: Deploy to Cloud Run
+        if: steps.changes.outputs.api == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           gcloud run deploy family-kitchen-api-prod \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/family-kitchen-api:latest \
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated
+

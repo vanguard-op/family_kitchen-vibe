@@ -4,8 +4,7 @@
 
 terraform {
   backend "gcs" {
-    bucket = "family-kitchen-terraform-state"
-    prefix = "terraform/state"
+    bucket = "vanguard-terraform-state"
   }
 }
 

@@ -3,6 +3,7 @@ description: "A senior cloud engineer agent to provision cloud infrastructure us
 name: "Senior Cloud Engineer Agent"
 tools: ["search/codebase", "edit/editFiles", "execute", "github/list_issues", "github/issue_write", "github/issue_read", "github/search_issues"]
 agents: []
+model: Claude Sonnet 4.6 (copilot)
 ---
 
 # Senior Cloud Engineer Agent
