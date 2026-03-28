@@ -63,9 +63,10 @@ class LogoutRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """Response schema for token endpoints."""
+    """Response schema for token endpoints with OIDC tokens."""
 
-    access_token: str = Field(..., description="JWT access token")
+    access_token: str = Field(..., description="JWT access token (OAuth2)")
+    id_token: str = Field(..., description="JWT ID token (OIDC, contains user info)")
     refresh_token: str = Field(..., description="JWT refresh token")
     token_type: str = Field(default="bearer", description="Token type")
 
@@ -73,13 +74,14 @@ class TokenResponse(BaseModel):
         """Pydantic config."""
         example = {
             "access_token": "eyJ...",
+            "id_token": "eyJ...",
             "refresh_token": "eyJ...",
             "token_type": "bearer",
         }
 
 
 class AuthorizedUser(BaseModel):
-    """User metadata from authenticated response."""
+    """User metadata from ID token."""
 
     user_id: str = Field(..., description="Unique user ID")
     kingdom_id: str = Field(..., description="Kingdom/organization ID")
@@ -97,39 +99,28 @@ class AuthorizedUser(BaseModel):
 
 
 class LoginResponse(TokenResponse):
-    """Response schema for login endpoint with user metadata."""
-
-    user_id: str = Field(..., description="Unique user ID")
-    kingdom_id: str = Field(..., description="Kingdom/organization ID")
-    email: str = Field(..., description="User email address")
-    role: str = Field(..., description="User role")
+    """Response schema for login endpoint."""
 
     class Config:
         """Pydantic config."""
         example = {
             "access_token": "eyJ...",
+            "id_token": "eyJ...",
             "refresh_token": "eyJ...",
             "token_type": "bearer",
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "kingdom_id": "default-kingdom",
-            "email": "user@example.com",
-            "role": "user",
         }
 
 
-class SignupResponse(LoginResponse):
+class SignupResponse(TokenResponse):
     """Response schema for signup endpoint."""
 
     class Config:
         """Pydantic config."""
         example = {
             "access_token": "eyJ...",
+            "id_token": "eyJ...",
             "refresh_token": "eyJ...",
             "token_type": "bearer",
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "kingdom_id": "default-kingdom",
-            "email": "user@example.com",
-            "role": "user",
         }
 
 

@@ -24,7 +24,7 @@ from app.utils.auth import (
     decode_token,
 )
 from app.security.oauth2 import (
-    create_token_pair,
+    create_token_set,
 )
 
 router = APIRouter()
@@ -57,7 +57,12 @@ async def signup(request: SignupRequest):
         password_hash = hash_password(request.password)
         user_id = create_user(email=request.email, password_hash=password_hash) 
 
-        access_token, refresh_token = create_token_pair(user_id=user_id, role="user")
+        access_token, id_token, refresh_token = create_token_set(
+            user_id=user_id,
+            email=request.email,
+            kingdom_id="default-kingdom",
+            role="user",
+        )
         create_refresh_token_record(user_id=user_id, refresh_token=refresh_token)
 
         log_auth_attempt(
@@ -69,12 +74,9 @@ async def signup(request: SignupRequest):
 
         return SignupResponse(
             access_token=access_token,
+            id_token=id_token,
             refresh_token=refresh_token,
             token_type="bearer",
-            user_id=user_id,
-            kingdom_id="default-kingdom",
-            email=request.email,
-            role="user",
         )
 
     except HTTPException:
@@ -152,8 +154,9 @@ async def login(request: LoginRequest):
         kingdom_id = user.get("kingdom_id", "default-kingdom")
         role = user.get("role", "user")
 
-        access_token, refresh_token = create_token_pair(
+        access_token, id_token, refresh_token = create_token_set(
             user_id=user_id,
+            email=request.email,
             kingdom_id=kingdom_id,
             role=role,
         )
@@ -168,12 +171,9 @@ async def login(request: LoginRequest):
 
         return LoginResponse(
             access_token=access_token,
+            id_token=id_token,
             refresh_token=refresh_token,
             token_type="bearer",
-            user_id=user_id,
-            kingdom_id=kingdom_id,
-            email=request.email,
-            role=role,
         )
     except HTTPException:
         raise
