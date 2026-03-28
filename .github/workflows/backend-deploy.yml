@@ -83,6 +83,6 @@ jobs:
           gcloud run deploy family-kitchen-api-prod \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/family-kitchen-api:latest \
             --platform managed \
-            --region us-central1 \
+            --region ${{ vars.GCP_REGION }} \
             --allow-unauthenticated
 
