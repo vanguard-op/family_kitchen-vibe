@@ -4,7 +4,7 @@ Authentication middleware for JWT token validation and user context extraction.
 from typing import Dict, Optional
 
 from fastapi import HTTPException, Request, status
-from authlib.jose import JWTError
+from authlib.jose.errors import JoseError
 
 from app.config import get_settings
 from app.security.oauth2 import extract_user_from_token
@@ -108,7 +108,7 @@ def validate_access_token(token: str) -> AuthContext:
             token_type="access",
         )
 
-    except JWTError as e:
+    except (JoseError, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid or expired token: {str(e)}",
@@ -166,7 +166,7 @@ def validate_refresh_token(
             token_type="refresh",
         )
 
-    except JWTError as e:
+    except (JoseError, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid or expired refresh token: {str(e)}",

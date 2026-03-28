@@ -3,7 +3,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Tuple
 import uuid
 
-from authlib.jose import jwt, JWTError
+from authlib.jose import jwt
+from authlib.jose.errors import JoseError
 
 from app.config import get_settings
 
@@ -99,13 +100,10 @@ def decode_token(token: str) -> Dict:
             token,
             settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
-            options={
-                "verify_exp": True,
-            },
         )
         return dict(payload)
-    except JWTError as e:
-        raise JWTError(f"Invalid token: {str(e)}")
+    except (JoseError, ValueError) as e:
+        raise ValueError(f"Invalid token: {str(e)}")
 
 
 def extract_user_from_token(token: str) -> Dict:
