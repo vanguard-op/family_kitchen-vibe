@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     API_TITLE: str = "Family Kitchen API"
     API_VERSION: str = "0.1.0"
     DEBUG: bool = False
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = "dev"
 
     # CORS
     CORS_ORIGINS: List[str] = [
@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Database
-    FIRESTORE_PROJECT_ID: str = "family-kitchen-dev"
-    FIRESTORE_CREDENTIALS_PATH: str = ""
+    FIRESTORE_PROJECT_ID: str = "vanguard-op"
+    FIRESTORE_CREDENTIALS_PATH: str = "firestore-credentials.json"
     FIRESTORE_USERS_COLLECTION: str = "users"
     FIRESTORE_REFRESH_TOKENS_COLLECTION: str = "refresh_tokens"
     FIRESTORE_AUDIT_COLLECTION: str = "audit_logs"
@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     FIRESTORE_ALLERGIES_COLLECTION: str = "allergies"
 
     # GCP
-    GCP_PROJECT_ID: str = "family-kitchen-dev"
-    GCP_REGION: str = "us-central1"
+    GCP_PROJECT_ID: str = "vanguard-op"
+    GCP_REGION: str = "africa-south1"
 
     # Security
     BCRYPT_ROUNDS: int = 12

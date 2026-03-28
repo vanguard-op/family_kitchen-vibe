@@ -20,12 +20,14 @@ class FirestoreClient:
         """Initialize Firestore client."""
         creds_path = settings.FIRESTORE_CREDENTIALS_PATH
         if creds_path and os.path.isfile(creds_path):
+            print(f"Using Firestore credentials from {creds_path}")
             credentials = service_account.Credentials.from_service_account_file(creds_path)
             self.db = firestore.Client(
                 project=settings.FIRESTORE_PROJECT_ID, credentials=credentials
             )
         else:
             # Fall back to Application Default Credentials (Cloud Run, Workload Identity, etc.)
+            print("Using Application Default Credentials")
             self.db = firestore.Client(project=settings.FIRESTORE_PROJECT_ID)
         self.users_collection = settings.FIRESTORE_USERS_COLLECTION
         self.tokens_collection = settings.FIRESTORE_REFRESH_TOKENS_COLLECTION
