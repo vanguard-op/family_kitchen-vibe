@@ -78,10 +78,31 @@ class TokenResponse(BaseModel):
         }
 
 
-class SignupResponse(TokenResponse):
-    """Response schema for signup endpoint."""
+class AuthorizedUser(BaseModel):
+    """User metadata from authenticated response."""
 
     user_id: str = Field(..., description="Unique user ID")
+    kingdom_id: str = Field(..., description="Kingdom/organization ID")
+    email: str = Field(..., description="User email address")
+    role: str = Field(..., description="User role")
+
+    class Config:
+        """Pydantic config."""
+        example = {
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "kingdom_id": "default-kingdom",
+            "email": "user@example.com",
+            "role": "user",
+        }
+
+
+class LoginResponse(TokenResponse):
+    """Response schema for login endpoint with user metadata."""
+
+    user_id: str = Field(..., description="Unique user ID")
+    kingdom_id: str = Field(..., description="Kingdom/organization ID")
+    email: str = Field(..., description="User email address")
+    role: str = Field(..., description="User role")
 
     class Config:
         """Pydantic config."""
@@ -90,6 +111,25 @@ class SignupResponse(TokenResponse):
             "refresh_token": "eyJ...",
             "token_type": "bearer",
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "kingdom_id": "default-kingdom",
+            "email": "user@example.com",
+            "role": "user",
+        }
+
+
+class SignupResponse(LoginResponse):
+    """Response schema for signup endpoint."""
+
+    class Config:
+        """Pydantic config."""
+        example = {
+            "access_token": "eyJ...",
+            "refresh_token": "eyJ...",
+            "token_type": "bearer",
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "kingdom_id": "default-kingdom",
+            "email": "user@example.com",
+            "role": "user",
         }
 
 

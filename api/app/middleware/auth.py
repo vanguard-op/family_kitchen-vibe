@@ -4,10 +4,10 @@ Authentication middleware for JWT token validation and user context extraction.
 from typing import Dict, Optional
 
 from fastapi import HTTPException, Request, status
-from jose import JWTError
+from authlib.jose import JWTError
 
 from app.config import get_settings
-from app.utils.auth import extract_user_from_token
+from app.security.oauth2 import extract_user_from_token
 
 
 class AuthContext:

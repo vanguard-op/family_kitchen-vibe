@@ -26,12 +26,13 @@ class AuthRepository {
       String email, String password) async {
     try {
       final response = await _dio.post('/auth/login', data: {
-        'username': email,
+        'email': email,
         'password': password,
       });
       final token = response.data['access_token'] as String;
       final userId = response.data['user_id'] as String? ?? '';
-      final hasKingdom = response.data['has_kingdom'] as bool? ?? false;
+      final kingdomId = response.data['kingdom_id'] as String? ?? 'default-kingdom';
+      final hasKingdom = kingdomId != 'default-kingdom';
       await _persist(
           token: token, userId: userId, email: email, hasKingdom: hasKingdom);
       return (userId: userId, email: email, hasKingdom: hasKingdom);
@@ -45,15 +46,17 @@ class AuthRepository {
   Future<({String userId, String email, bool hasKingdom})> signup(
       String email, String password) async {
     try {
-      final response = await _dio.post('/auth/register', data: {
+      final response = await _dio.post('/auth/signup', data: {
         'email': email,
         'password': password,
       });
       final token = response.data['access_token'] as String;
       final userId = response.data['user_id'] as String? ?? '';
+      final kingdomId = response.data['kingdom_id'] as String? ?? 'default-kingdom';
+      final hasKingdom = kingdomId != 'default-kingdom';
       await _persist(
-          token: token, userId: userId, email: email, hasKingdom: false);
-      return (userId: userId, email: email, hasKingdom: false);
+          token: token, userId: userId, email: email, hasKingdom: hasKingdom);
+      return (userId: userId, email: email, hasKingdom: hasKingdom);
     } on DioException catch (e) {
       throw e.toAppException();
     } catch (e) {

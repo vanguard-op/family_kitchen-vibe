@@ -1,4 +1,4 @@
-"""Authentication endpoints"""
+"""Authentication endpoints with OAuth2 Resource Owner Password Credentials flow"""
 from fastapi import APIRouter, HTTPException, status
 
 from app.schemas.auth import (
@@ -7,6 +7,7 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     TokenResponse,
     SignupResponse,
+    LoginResponse,
     ErrorResponse,
 )
 from app.db.firestore import (
@@ -20,8 +21,10 @@ from app.db.firestore import (
 from app.utils.auth import (
     hash_password,
     verify_password,
-    create_token_pair,
     decode_token,
+)
+from app.security.oauth2 import (
+    create_token_pair,
 )
 
 router = APIRouter()
@@ -34,7 +37,10 @@ router = APIRouter()
     responses={400: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
 )
 async def signup(request: SignupRequest):
-    """Sign up a new user account."""
+    """Sign up a new user account.
+    
+    Returns user metadata with tokens for immediate authentication.
+    """
     try:
         existing_user = get_user_by_email(request.email)
         if existing_user:
@@ -49,9 +55,9 @@ async def signup(request: SignupRequest):
             )
 
         password_hash = hash_password(request.password)
-        user_id = create_user(email=request.email, password_hash=password_hash)
+        user_id = create_user(email=request.email, password_hash=password_hash) 
 
-        access_token, refresh_token = create_token_pair(user_id=user_id, role="User")
+        access_token, refresh_token = create_token_pair(user_id=user_id, role="user")
         create_refresh_token_record(user_id=user_id, refresh_token=refresh_token)
 
         log_auth_attempt(
@@ -66,6 +72,9 @@ async def signup(request: SignupRequest):
             refresh_token=refresh_token,
             token_type="bearer",
             user_id=user_id,
+            kingdom_id="default-kingdom",
+            email=request.email,
+            role="user",
         )
 
     except HTTPException:
@@ -94,12 +103,16 @@ async def signup(request: SignupRequest):
 
 @router.post(
     "/login",
-    response_model=TokenResponse,
+    response_model=LoginResponse,
     status_code=status.HTTP_200_OK,
     responses={401: {"model": ErrorResponse}},
 )
 async def login(request: LoginRequest):
-    """Authenticate user and return access/refresh tokens."""
+    """Authenticate user and return access/refresh tokens with user metadata.
+    
+    Implements OAuth2 Resource Owner Password Credentials flow.
+    Returns user_id, kingdom_id, and role for immediate app initialization.
+    """
     try:
         user = get_user_by_email(request.email)
         if not user:
@@ -113,7 +126,7 @@ async def login(request: LoginRequest):
                 detail="Invalid email or password",
             )
 
-        if not verify_password(request.password, user["password_hash"]):
+        if not verify_password(request.password, user["password_hash"]):        
             log_auth_attempt(
                 event_type="login_failed",
                 email=request.email,
@@ -137,7 +150,7 @@ async def login(request: LoginRequest):
 
         user_id = user["user_id"]
         kingdom_id = user.get("kingdom_id", "default-kingdom")
-        role = user.get("role", "User")
+        role = user.get("role", "user")
 
         access_token, refresh_token = create_token_pair(
             user_id=user_id,
@@ -153,12 +166,15 @@ async def login(request: LoginRequest):
             success=True,
         )
 
-        return TokenResponse(
+        return LoginResponse(
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="bearer",
+            user_id=user_id,
+            kingdom_id=kingdom_id,
+            email=request.email,
+            role=role,
         )
-
     except HTTPException:
         raise
     except Exception as e:

@@ -216,11 +216,11 @@ class TestTokenDecoding:
 
     def test_token_payload(self):
         """Test that token contains correct claims"""
-        from app.utils.auth import create_token_pair
+        from app.security.oauth2 import create_token_pair
 
         access_token, refresh_token = create_token_pair(
             user_id="user-123",
-            role="User",
+            role="user",
         )
 
         # Access token should be valid
