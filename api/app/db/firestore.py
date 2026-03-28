@@ -1,12 +1,14 @@
 """
 Firestore integration for user, token, kingdom, inventory, and allergy management.
 """
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
+from google.oauth2 import service_account
 
 from app.config import settings
 
@@ -16,7 +18,15 @@ class FirestoreClient:
 
     def __init__(self):
         """Initialize Firestore client."""
-        self.db = firestore.Client(project=settings.FIRESTORE_PROJECT_ID)
+        creds_path = settings.FIRESTORE_CREDENTIALS_PATH
+        if creds_path and os.path.isfile(creds_path):
+            credentials = service_account.Credentials.from_service_account_file(creds_path)
+            self.db = firestore.Client(
+                project=settings.FIRESTORE_PROJECT_ID, credentials=credentials
+            )
+        else:
+            # Fall back to Application Default Credentials (Cloud Run, Workload Identity, etc.)
+            self.db = firestore.Client(project=settings.FIRESTORE_PROJECT_ID)
         self.users_collection = settings.FIRESTORE_USERS_COLLECTION
         self.tokens_collection = settings.FIRESTORE_REFRESH_TOKENS_COLLECTION
         self.audit_collection = settings.FIRESTORE_AUDIT_COLLECTION

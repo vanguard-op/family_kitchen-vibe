@@ -5,3 +5,8 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+    environment:
+      - FIRESTORE_PROJECT_ID=${FIRESTORE_PROJECT_ID:-vanguard-op}
+      - FIRESTORE_CREDENTIALS_PATH=${FIRESTORE_CREDENTIALS_PATH:-firestore-credentials.json}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production-use-secret-manager}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
