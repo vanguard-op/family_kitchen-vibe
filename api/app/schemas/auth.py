@@ -13,7 +13,8 @@ class SignupRequest(BaseModel):
     password: str = Field(
         ...,
         min_length=8,
-        description="User password (minimum 8 characters)",
+        max_length=72,
+        description="User password (8-72 characters). Max 72 due to bcrypt limitation.",
     )
 
     class Config:
@@ -28,7 +29,11 @@ class LoginRequest(BaseModel):
     """Request schema for user login."""
 
     email: EmailStr = Field(..., description="User email address")
-    password: str = Field(..., description="User password")
+    password: str = Field(
+        ...,
+        max_length=72,
+        description="User password (max 72 characters)",
+    )
 
     class Config:
         """Pydantic config."""
