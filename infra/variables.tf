@@ -56,7 +56,7 @@ variable "jwt_secret_length" {
 variable "firestore_backup_schedule" {
   description = "Cron schedule for Firestore backups (UTC)"
   type        = string
-  default     = "0 2 * * *"  # Daily at 2 AM UTC
+  default     = "0 2 * * *" # Daily at 2 AM UTC
 }
 
 variable "log_retention_days" {
@@ -69,9 +69,9 @@ variable "common_labels" {
   description = "Common labels applied to all resources"
   type        = map(string)
   default = {
-    project     = "family-kitchen"
-    managed_by  = "terraform"
-    version     = "1.0"
+    project    = "family-kitchen"
+    managed_by = "terraform"
+    version    = "1.0"
   }
 }
 
@@ -87,27 +87,20 @@ variable "enable_cloud_armor" {
   default     = true
 }
 
-
-variable "gcp_region" {
-  description = "GCP Region"
-  type        = string
-  default     = "us-central1"
-}
-
-variable "firestore_region" {
-  description = "Firestore region"
-  type        = string
-  default     = "us-central"
-}
-
-variable "environment" {
-  description = "Environment (dev/staging/prod)"
-  type        = string
-  default     = "dev"
-}
-
 variable "app_name" {
-  description = "Application name"
+  description = "Application name used in resource naming"
   type        = string
   default     = "family-kitchen"
+}
+
+variable "cloud_run_cpu" {
+  description = "Cloud Run vCPU allocation (e.g. '1' or '2')"
+  type        = string
+  default     = "1"
+}
+
+variable "cloud_run_memory" {
+  description = "Cloud Run memory allocation (e.g. '512Mi' or '1Gi')"
+  type        = string
+  default     = "512Mi"
 }

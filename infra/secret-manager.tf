@@ -4,7 +4,7 @@ resource "google_secret_manager_secret" "jwt_secret" {
   project   = var.gcp_project_id
 
   replication {
-    automatic = true
+    auto {}
   }
 }
 

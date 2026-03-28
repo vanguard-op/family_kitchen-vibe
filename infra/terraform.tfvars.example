@@ -1,4 +1,16 @@
-gcp_project_id = "family-kitchen-dev"
-gcp_region     = "us-central1"
-environment    = "dev"
-app_name       = "family-kitchen"
+# Copy this file to dev.tfvars / staging.tfvars / prod.tfvars and fill in actual values.
+
+gcp_project_id          = "your-gcp-project-id"
+gcp_region              = "us-central1"
+firestore_region        = "us-central"
+environment             = "dev"                    # dev | staging | prod
+app_name                = "family-kitchen"
+cloud_run_image         = "gcr.io/your-gcp-project-id/family-kitchen-api:latest"
+cloud_run_min_instances = 0
+cloud_run_max_instances = 3
+cloud_run_cpu           = "1"
+cloud_run_memory        = "512Mi"
+log_retention_days      = 30
+enable_firestore_backup = false
+enable_cloud_armor      = false
+create_state_bucket     = false

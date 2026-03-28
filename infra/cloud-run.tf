@@ -9,7 +9,7 @@ resource "google_cloud_run_service" "api" {
       service_account_name = google_service_account.api.email
 
       containers {
-        image = "gcr.io/${var.gcp_project_id}/${var.app_name}-api:latest"
+        image = var.cloud_run_image
 
         env {
           name  = "ENVIRONMENT"
@@ -23,6 +23,13 @@ resource "google_cloud_run_service" "api" {
 
         ports {
           container_port = 8000
+        }
+
+        resources {
+          limits = {
+            cpu    = var.cloud_run_cpu
+            memory = var.cloud_run_memory
+          }
         }
       }
     }
@@ -38,6 +45,7 @@ resource "google_cloud_run_service" "api" {
 
 # IAM binding to allow unauthenticated access (for now)
 resource "google_cloud_run_service_iam_binding" "api_public" {
+  project    = var.gcp_project_id
   service    = google_cloud_run_service.api.name
   location   = google_cloud_run_service.api.location
   role       = "roles/run.invoker"

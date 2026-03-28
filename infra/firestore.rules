@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getMember(uid) {
+      return get(/databases/$(database)/documents/members/$(uid)).data;
+    }
+
+    function isKingdomMember(kingdomId) {
+      return isSignedIn() && getMember(request.auth.uid).kingdom_id == kingdomId;
+    }
+
+    function isKingdomAdmin(kingdomId) {
+      return isKingdomMember(kingdomId) &&
+             getMember(request.auth.uid).role in ['King', 'Queen'];
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /kingdoms/{kingdomId} {
+      allow read: if isKingdomMember(kingdomId);
+      allow write: if isKingdomAdmin(kingdomId);
+
+      match /members/{memberId} {
+        allow read: if isKingdomMember(kingdomId);
+        allow write: if isKingdomAdmin(kingdomId);
+      }
+
+      match /inventory/{itemId} {
+        allow read, write: if isKingdomMember(kingdomId);
+      }
+    }
+
+    match /members/{memberId} {
+      allow read: if isSignedIn() &&
+        getMember(request.auth.uid).kingdom_id == getMember(memberId).kingdom_id;
+      allow write: if isSignedIn() && request.auth.uid == memberId;
+
+      match /allergies/{allergyId} {
+        allow read: if isSignedIn() &&
+          getMember(request.auth.uid).kingdom_id == getMember(memberId).kingdom_id;
+        allow write: if isSignedIn() && request.auth.uid == memberId;
+      }
+    }
+  }
+}
