@@ -4,7 +4,7 @@ class AppException implements Exception {
   final String message;
   final String? details;
 
-  AppException(this.code, this.message, {this.details});
+  AppException(this.message, {int? code, this.details}) : code = code ?? 0;
 
   String get title {
     switch (code) {

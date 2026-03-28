@@ -1,5 +1,9 @@
 import 'package:dio/dio.dart';
+import 'package:family_kitchen/utils/exceptions.dart';
+import 'package:family_kitchen/utils/extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../utils/constants.dart';
 
 class AuthRepository {
   static const _tokenKey = 'auth_token';
@@ -12,34 +16,49 @@ class AuthRepository {
   AuthRepository({Dio? dio})
       : _dio = dio ??
             Dio(BaseOptions(
-              baseUrl: 'http://localhost:8000/api/v1',
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 10),
+              baseUrl: ApiConfig.apiV1,
+              connectTimeout: ApiConfig.connectTimeout,
+              receiveTimeout: ApiConfig.receiveTimeout,
+              validateStatus: ApiConfig.validateStatus,
             ));
 
   Future<({String userId, String email, bool hasKingdom})> login(
       String email, String password) async {
-    final response = await _dio.post('/auth/login', data: {
-      'username': email,
-      'password': password,
-    });
-    final token = response.data['access_token'] as String;
-    final userId = response.data['user_id'] as String? ?? '';
-    final hasKingdom = response.data['has_kingdom'] as bool? ?? false;
-    await _persist(token: token, userId: userId, email: email, hasKingdom: hasKingdom);
-    return (userId: userId, email: email, hasKingdom: hasKingdom);
+    try {
+      final response = await _dio.post('/auth/login', data: {
+        'username': email,
+        'password': password,
+      });
+      final token = response.data['access_token'] as String;
+      final userId = response.data['user_id'] as String? ?? '';
+      final hasKingdom = response.data['has_kingdom'] as bool? ?? false;
+      await _persist(
+          token: token, userId: userId, email: email, hasKingdom: hasKingdom);
+      return (userId: userId, email: email, hasKingdom: hasKingdom);
+    } on DioException catch (e) {
+      throw e.toAppException();
+    } catch (e) {
+      throw AppException('An unexpected error occurred: $e');
+    }
   }
 
   Future<({String userId, String email, bool hasKingdom})> signup(
       String email, String password) async {
-    final response = await _dio.post('/auth/register', data: {
-      'email': email,
-      'password': password,
-    });
-    final token = response.data['access_token'] as String;
-    final userId = response.data['user_id'] as String? ?? '';
-    await _persist(token: token, userId: userId, email: email, hasKingdom: false);
-    return (userId: userId, email: email, hasKingdom: false);
+    try {
+      final response = await _dio.post('/auth/register', data: {
+        'email': email,
+        'password': password,
+      });
+      final token = response.data['access_token'] as String;
+      final userId = response.data['user_id'] as String? ?? '';
+      await _persist(
+          token: token, userId: userId, email: email, hasKingdom: false);
+      return (userId: userId, email: email, hasKingdom: false);
+    } on DioException catch (e) {
+      throw e.toAppException();
+    } catch (e) {
+      throw AppException('An unexpected error occurred: $e');
+    }
   }
 
   Future<({String userId, String email, bool hasKingdom})?> checkAuth() async {
