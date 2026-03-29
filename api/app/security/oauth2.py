@@ -79,9 +79,9 @@ def create_access_token(
     }
     
     token = jwt.encode(
+        {"alg": settings.JWT_ALGORITHM, "typ": "JWT"},
         payload,
         settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
     )
     
     return token if isinstance(token, str) else token.decode()
@@ -130,9 +130,9 @@ def create_id_token(
     }
     
     token = jwt.encode(
+        {"alg": settings.JWT_ALGORITHM, "typ": "JWT"},
         payload,
         settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
     )
     
     return token if isinstance(token, str) else token.decode()
@@ -174,9 +174,9 @@ def create_refresh_token(
     }
     
     token = jwt.encode(
+        {"alg": settings.JWT_ALGORITHM, "typ": "JWT"},
         payload,
         settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
     )
     
     return token if isinstance(token, str) else token.decode()
