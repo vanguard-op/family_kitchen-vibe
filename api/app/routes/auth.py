@@ -10,12 +10,12 @@ from app.db.firestore import (
     revoke_refresh_token,
     get_refresh_token_record,
 )
-from app.utils.auth import hash_password, verify_password, decode_token
-from app.security.oauth2 import create_token_set
-from app.audit import log_auth_attempt
+from app.utils.auth import hash_password, verify_password
+from app.security.oauth2 import create_token_set, decode_token
+from app.db.firestore import log_auth_attempt
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 
 # Response Models
@@ -71,7 +71,7 @@ async def signup(request: SignupRequest) -> SignupResponse:
         if existing_user:
             await log_auth_attempt(
                 email=request.email,
-                action="signup",
+                event_type="signup",
                 success=False,
                 reason="email_already_exists"
             )
@@ -82,11 +82,12 @@ async def signup(request: SignupRequest) -> SignupResponse:
         
         # Hash and validate password
         try:
+            print(f"Hashing password: {request.password}")
             hashed_password = hash_password(request.password)
         except ValueError as e:
             await log_auth_attempt(
                 email=request.email,
-                action="signup",
+                event_type="signup",
                 success=False,
                 reason="invalid_password"
             )
@@ -98,7 +99,7 @@ async def signup(request: SignupRequest) -> SignupResponse:
         # Create user
         user_id = await create_user(
             email=request.email,
-            hashed_password=hashed_password
+            password_hash=hashed_password
         )
         
         # Generate tokens (create_token_set is not async)
@@ -115,7 +116,7 @@ async def signup(request: SignupRequest) -> SignupResponse:
         # Log success
         await log_auth_attempt(
             email=request.email,
-            action="signup",
+            event_type="signup",
             success=True,
             user_id=user_id
         )
@@ -133,7 +134,7 @@ async def signup(request: SignupRequest) -> SignupResponse:
         logger.error(f"Signup error: {str(e)}", exc_info=True)
         await log_auth_attempt(
             email=request.email,
-            action="signup",
+            event_type="signup",
             success=False,
             reason="server_error"
         )
@@ -158,7 +159,7 @@ async def login(request: LoginRequest) -> LoginResponse:
         if not user:
             await log_auth_attempt(
                 email=request.email,
-                action="login",
+                event_type="login",
                 success=False,
                 reason="user_not_found"
             )
@@ -171,7 +172,7 @@ async def login(request: LoginRequest) -> LoginResponse:
         if not user.get("is_active", False):
             await log_auth_attempt(
                 email=request.email,
-                action="login",
+                event_type="login",
                 success=False,
                 reason="user_inactive",
                 user_id=user.get("id")
@@ -186,7 +187,7 @@ async def login(request: LoginRequest) -> LoginResponse:
             if not verify_password(request.password, user.get("hashed_password", "")):
                 await log_auth_attempt(
                     email=request.email,
-                    action="login",
+                    event_type="login",
                     success=False,
                     reason="invalid_password",
                     user_id=user.get("id")
@@ -198,7 +199,7 @@ async def login(request: LoginRequest) -> LoginResponse:
         except ValueError as e:
             await log_auth_attempt(
                 email=request.email,
-                action="login",
+                event_type="login",
                 success=False,
                 reason="password_verification_error",
                 user_id=user.get("id")
@@ -210,7 +211,12 @@ async def login(request: LoginRequest) -> LoginResponse:
         
         # Generate tokens
         user_id = user.get("id")
-        access_token, id_token, refresh_token = await create_token_set(user_id)
+        access_token, id_token, refresh_token = create_token_set(
+            user_id=user_id,
+            email=request.email,
+            kingdom_id=user.get("kingdom_id", "default-kingdom"),
+            role=user.get("role", "user"),
+        )
         
         # Store refresh token record
         await create_refresh_token_record(user_id, refresh_token)
@@ -218,7 +224,7 @@ async def login(request: LoginRequest) -> LoginResponse:
         # Log success
         await log_auth_attempt(
             email=request.email,
-            action="login",
+            event_type="login",
             success=True,
             user_id=user_id
         )
@@ -236,7 +242,7 @@ async def login(request: LoginRequest) -> LoginResponse:
         logger.error(f"Login error: {str(e)}", exc_info=True)
         await log_auth_attempt(
             email=request.email,
-            action="login",
+            event_type="login",
             success=False,
             reason="server_error"
         )
@@ -258,7 +264,7 @@ async def refresh(request: RefreshRequest) -> TokenResponse:
     try:
         # Decode refresh token
         try:
-            payload = await decode_token(request.refresh_token, token_type="refresh")
+            payload = decode_token(request.refresh_token)
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -271,7 +277,7 @@ async def refresh(request: RefreshRequest) -> TokenResponse:
         token_record = await get_refresh_token_record(user_id, request.refresh_token)
         if not token_record or token_record.get("revoked", False):
             await log_auth_attempt(
-                action="refresh",
+                event_type="refresh",
                 success=False,
                 reason="token_revoked",
                 user_id=user_id
@@ -285,14 +291,19 @@ async def refresh(request: RefreshRequest) -> TokenResponse:
         await revoke_refresh_token(user_id, request.refresh_token)
         
         # Create new token set
-        access_token, id_token, new_refresh_token = await create_token_set(user_id)
+        access_token, id_token, new_refresh_token = create_token_set(
+            user_id=user_id,
+            email=payload.get("email"),
+            kingdom_id=payload.get("kingdom_id", "default-kingdom"),
+            role=payload.get("role", "user"),
+        )
         
         # Store new refresh token record
         await create_refresh_token_record(user_id, new_refresh_token)
         
         # Log success
         await log_auth_attempt(
-            action="refresh",
+            event_type="refresh",
             success=True,
             user_id=user_id
         )
@@ -309,7 +320,7 @@ async def refresh(request: RefreshRequest) -> TokenResponse:
     except Exception as e:
         logger.error(f"Refresh token error: {str(e)}", exc_info=True)
         await log_auth_attempt(
-            action="refresh",
+            event_type="refresh",
             success=False,
             reason="server_error"
         )
@@ -330,7 +341,7 @@ async def logout(request: RefreshRequest) -> None:
     try:
         # Decode token to get user_id (best effort)
         try:
-            payload = await decode_token(request.refresh_token, token_type="refresh")
+            payload = decode_token(request.refresh_token)
             user_id = payload.get("sub")
             
             # Revoke the token (best effort, idempotent)
@@ -338,7 +349,7 @@ async def logout(request: RefreshRequest) -> None:
             
             # Log success
             await log_auth_attempt(
-                action="logout",
+                event_type="logout",
                 success=True,
                 user_id=user_id
             )
@@ -346,7 +357,7 @@ async def logout(request: RefreshRequest) -> None:
             # Invalid token, but still return 204 (idempotent)
             logger.debug("Logout attempt with invalid token")
             await log_auth_attempt(
-                action="logout",
+                event_type="logout",
                 success=False,
                 reason="invalid_token"
             )
@@ -355,7 +366,7 @@ async def logout(request: RefreshRequest) -> None:
         # Log error but still return 204 (idempotent)
         logger.error(f"Logout error: {str(e)}", exc_info=True)
         await log_auth_attempt(
-            action="logout",
+            event_type="logout",
             success=False,
             reason="server_error"
         )
