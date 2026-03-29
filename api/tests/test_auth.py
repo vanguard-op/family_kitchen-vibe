@@ -216,17 +216,20 @@ class TestTokenDecoding:
 
     def test_token_payload(self):
         """Test that token contains correct claims"""
-        from app.utils.auth import create_token_pair
+        from app.security.oauth2 import create_token_set
 
-        access_token, refresh_token = create_token_pair(
+        access_token, id_token, refresh_token = create_token_set(
             user_id="user-123",
-            role="User",
+            email="test@example.com",
+            role="user",
         )
 
-        # Access token should be valid
+        # All tokens should be valid
         assert access_token is not None
         assert len(access_token) > 0
+        
+        assert id_token is not None
+        assert len(id_token) > 0
 
-        # Refresh token should be valid
         assert refresh_token is not None
         assert len(refresh_token) > 0

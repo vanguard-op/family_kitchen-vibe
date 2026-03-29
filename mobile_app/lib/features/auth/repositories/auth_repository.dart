@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:family_kitchen/utils/exceptions.dart';
 import 'package:family_kitchen/utils/extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 
 import '../../../utils/constants.dart';
 
@@ -22,51 +23,97 @@ class AuthRepository {
               validateStatus: ApiConfig.validateStatus,
             ));
 
+  /// Extract user information from OIDC id_token
+  /// 
+  /// The id_token contains user identity:
+  /// {user_id, email, kingdom_id, role}
+  Map<String, dynamic> _extractUserFromIdToken(String idToken) {
+    try {
+      final decodedToken = JwtDecoder.decode(idToken);
+      return {
+        'user_id': decodedToken['user_id'] as String? ?? '',
+        'email': decodedToken['email'] as String? ?? '',
+        'kingdom_id': decodedToken['kingdom_id'] as String? ?? 'default-kingdom',
+        'role': decodedToken['role'] as String? ?? 'user',
+      };
+    } catch (e) {
+      throw AppException('Failed to decode id_token: $e');
+    }
+  }
+
   Future<({String userId, String email, bool hasKingdom})> login(
       String email, String password) async {
     try {
       final response = await _dio.post('/auth/login', data: {
-        'username': email,
+        'email': email,
         'password': password,
       });
-      final token = response.data['access_token'] as String;
-      final userId = response.data['user_id'] as String? ?? '';
-      final hasKingdom = response.data['has_kingdom'] as bool? ?? false;
+      
+      // Extract tokens from OIDC response
+      final accessToken = response.data['access_token'] as String? ?? '';
+      final idToken = response.data['id_token'] as String? ?? '';
+      
+      if (accessToken.isEmpty || idToken.isEmpty) {
+        throw AppException('Invalid authentication response: missing tokens');
+      }
+      
+      // Decode id_token to extract user information
+      final userInfo = _extractUserFromIdToken(idToken);
+      final userId = userInfo['user_id'] as String;
+      final userEmail = userInfo['email'] as String;
+      final kingdomId = userInfo['kingdom_id'] as String;
+      final hasKingdom = kingdomId != 'default-kingdom';
+      
       await _persist(
-          token: token, userId: userId, email: email, hasKingdom: hasKingdom);
-      return (userId: userId, email: email, hasKingdom: hasKingdom);
+        token: accessToken,
+        userId: userId,
+        email: userEmail,
+        hasKingdom: hasKingdom,
+      );
+      
+      return (userId: userId, email: userEmail, hasKingdom: hasKingdom);
     } on DioException catch (e) {
       throw e.toAppException();
     } catch (e) {
-      throw AppException('An unexpected error occurred: $e');
+      throw AppException('Login failed: $e');
     }
   }
 
   Future<({String userId, String email, bool hasKingdom})> signup(
       String email, String password) async {
     try {
-      final response = await _dio.post('/auth/register', data: {
+      final response = await _dio.post('/auth/signup', data: {
         'email': email,
         'password': password,
       });
-      final token = response.data['access_token'] as String;
-      final userId = response.data['user_id'] as String? ?? '';
+      
+      // Extract tokens from OIDC response
+      final accessToken = response.data['access_token'] as String? ?? '';
+      final idToken = response.data['id_token'] as String? ?? '';
+      
+      if (accessToken.isEmpty || idToken.isEmpty) {
+        throw AppException('Invalid authentication response: missing tokens');
+      }
+      
+      // Decode id_token to extract user information
+      final userInfo = _extractUserFromIdToken(idToken);
+      final userId = userInfo['user_id'] as String;
+      final userEmail = userInfo['email'] as String;
+      final kingdomId = userInfo['kingdom_id'] as String;
+      final hasKingdom = kingdomId != 'default-kingdom';
+      
       await _persist(
-          token: token, userId: userId, email: email, hasKingdom: false);
-      return (userId: userId, email: email, hasKingdom: false);
+        token: accessToken,
+        userId: userId,
+        email: userEmail,
+        hasKingdom: hasKingdom,
+      );
+      
+      return (userId: userId, email: userEmail, hasKingdom: hasKingdom);
     } on DioException catch (e) {
       throw e.toAppException();
     } catch (e) {
-      throw AppException('An unexpected error occurred: $e');
-    }
-  }
-
-  Future<({String userId, String email, bool hasKingdom})?> checkAuth() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey);
-    if (token == null) return null;
-    final userId = prefs.getString(_userIdKey) ?? '';
-    final email = prefs.getString(_emailKey) ?? '';
+      throw AppException('Signup failed: $e');
     final hasKingdom = prefs.getBool(_hasKingdomKey) ?? false;
     return (userId: userId, email: email, hasKingdom: hasKingdom);
   }

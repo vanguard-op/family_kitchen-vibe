@@ -13,7 +13,8 @@ class SignupRequest(BaseModel):
     password: str = Field(
         ...,
         min_length=8,
-        description="User password (minimum 8 characters)",
+        max_length=72,
+        description="User password (8-72 characters). Max 72 due to bcrypt limitation.",
     )
 
     class Config:
@@ -28,7 +29,11 @@ class LoginRequest(BaseModel):
     """Request schema for user login."""
 
     email: EmailStr = Field(..., description="User email address")
-    password: str = Field(..., description="User password")
+    password: str = Field(
+        ...,
+        max_length=72,
+        description="User password (max 72 characters)",
+    )
 
     class Config:
         """Pydantic config."""
@@ -63,9 +68,10 @@ class LogoutRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """Response schema for token endpoints."""
+    """Response schema for token endpoints with OIDC tokens."""
 
-    access_token: str = Field(..., description="JWT access token")
+    access_token: str = Field(..., description="JWT access token (OAuth2)")
+    id_token: str = Field(..., description="JWT ID token (OIDC, contains user info)")
     refresh_token: str = Field(..., description="JWT refresh token")
     token_type: str = Field(default="bearer", description="Token type")
 
@@ -73,6 +79,38 @@ class TokenResponse(BaseModel):
         """Pydantic config."""
         example = {
             "access_token": "eyJ...",
+            "id_token": "eyJ...",
+            "refresh_token": "eyJ...",
+            "token_type": "bearer",
+        }
+
+
+class AuthorizedUser(BaseModel):
+    """User metadata from ID token."""
+
+    user_id: str = Field(..., description="Unique user ID")
+    kingdom_id: str = Field(..., description="Kingdom/organization ID")
+    email: str = Field(..., description="User email address")
+    role: str = Field(..., description="User role")
+
+    class Config:
+        """Pydantic config."""
+        example = {
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "kingdom_id": "default-kingdom",
+            "email": "user@example.com",
+            "role": "user",
+        }
+
+
+class LoginResponse(TokenResponse):
+    """Response schema for login endpoint."""
+
+    class Config:
+        """Pydantic config."""
+        example = {
+            "access_token": "eyJ...",
+            "id_token": "eyJ...",
             "refresh_token": "eyJ...",
             "token_type": "bearer",
         }
@@ -81,15 +119,13 @@ class TokenResponse(BaseModel):
 class SignupResponse(TokenResponse):
     """Response schema for signup endpoint."""
 
-    user_id: str = Field(..., description="Unique user ID")
-
     class Config:
         """Pydantic config."""
         example = {
             "access_token": "eyJ...",
+            "id_token": "eyJ...",
             "refresh_token": "eyJ...",
             "token_type": "bearer",
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
         }
 
 
